@@ -4,6 +4,7 @@ import { ACCENT_COLORS, SESSION_TYPES, DEFAULT_SESSIONS } from '../lib/defaults'
 export default function SessionEditor({ sessions, onSave, onClose }) {
   const [list, setList] = useState(sessions.map(s => ({ ...s })))
   const [editingId, setEditingId] = useState(null)
+  const [saveAsDefault, setSaveAsDefault] = useState(false)
 
   const editing = list.find(s => s.id === editingId)
 
@@ -59,7 +60,7 @@ export default function SessionEditor({ sessions, onSave, onClose }) {
         maxHeight: '90vh', overflow: 'auto', padding: 24,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 600 }}>Edit Sessions</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 600 }}>Edit Today's Tasks</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 20, cursor: 'pointer' }}>✕</button>
         </div>
 
@@ -151,21 +152,35 @@ export default function SessionEditor({ sessions, onSave, onClose }) {
           width: '100%', padding: '10px', background: 'var(--surface2)',
           border: '1px dashed var(--border2)', borderRadius: 10,
           color: 'var(--muted)', fontSize: 13, cursor: 'pointer', marginTop: 4,
-        }}>+ Add session</button>
+        }}>+ Add task</button>
+
+        <label style={{
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          marginTop: 14, color: 'var(--muted)', fontSize: 12,
+          lineHeight: 1.4, cursor: 'pointer',
+        }}>
+          <input
+            type="checkbox"
+            checked={saveAsDefault}
+            onChange={e => setSaveAsDefault(e.target.checked)}
+            style={{ marginTop: 2 }}
+          />
+          <span>Use this list as my default for new days</span>
+        </label>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <button onClick={() => { if (confirm('Reset to default sessions?')) setList(DEFAULT_SESSIONS.map(s => ({ ...s }))) }}
+          <button onClick={() => { if (confirm('Reset to default tasks?')) setList(DEFAULT_SESSIONS.map(s => ({ ...s }))) }}
             style={{
               flex: 1, padding: '10px', background: 'none',
               border: '1px solid var(--border)', borderRadius: 10,
               color: 'var(--muted)', fontSize: 13, cursor: 'pointer',
             }}>Reset defaults</button>
-          <button onClick={() => onSave(list)}
+          <button onClick={() => onSave(list, saveAsDefault)}
             style={{
               flex: 2, padding: '10px', background: 'var(--purple)',
               border: 'none', borderRadius: 10,
               color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            }}>Save sessions</button>
+            }}>Save tasks</button>
         </div>
       </div>
     </div>

@@ -13,7 +13,6 @@ export default function Calendar({ sessions, dayData, viewDate, onSelectDate }) 
     setCalMonth(m); setCalYear(y)
   }
 
-  const total = sessions.length
   const today = todayKey()
   const firstDay = new Date(calYear, calMonth, 1).getDay()
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
@@ -22,7 +21,9 @@ export default function Calendar({ sessions, dayData, viewDate, onSelectDate }) 
   function dayStatus(key) {
     const d = dayData[key]
     if (!d) return 'none'
-    const done = sessions.filter(s => d.completed?.[s.id]).length
+    const daySessions = d.sessions?.length ? d.sessions : sessions
+    const done = daySessions.filter(s => d.completed?.[s.id]).length
+    const total = daySessions.length
     if (done === total) return 'perfect'
     if (done > 0) return 'partial'
     return 'none'

@@ -94,7 +94,8 @@ function calcStreak(sessions, dayData) {
   for (let i = 0; i < 365; i++) {
     const key = keyForDate(d)
     const data = dayData[key] || {}
-    const done = sessions.filter(s => data.completed?.[s.id]).length
+    const daySessions = data.sessions?.length ? data.sessions : sessions
+    const done = daySessions.filter(s => data.completed?.[s.id]).length
     if (done === 0 && key !== today) break
     if (done > 0) streak++
     d.setDate(d.getDate() - 1)
@@ -109,7 +110,8 @@ function countPerfectMonth(sessions, dayData) {
     const d = new Date(now.getFullYear(), now.getMonth(), day)
     const key = keyForDate(d)
     const data = dayData[key] || {}
-    if (sessions.length > 0 && sessions.every(s => data.completed?.[s.id])) count++
+    const daySessions = data.sessions?.length ? data.sessions : sessions
+    if (daySessions.length > 0 && daySessions.every(s => data.completed?.[s.id])) count++
   }
   return count
 }
