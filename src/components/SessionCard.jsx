@@ -1,7 +1,9 @@
 import { parseHHMM, todayKey } from '../hooks/useClock'
+import { calculateSessionHours } from '../lib/sessionUtils'
 
 export default function SessionCard({ session, done, viewDate, nowHour, onToggle }) {
   const isToday = viewDate === todayKey()
+  const hours = calculateSessionHours(session.timeStart, session.timeEnd)
   const active = isToday &&
     nowHour >= parseHHMM(session.timeStart) &&
     nowHour < parseHHMM(session.timeEnd)
@@ -62,7 +64,7 @@ export default function SessionCard({ session, done, viewDate, nowHour, onToggle
           marginTop: 3,
         }}>
           {session.timeStart} – {session.timeEnd}
-          <span style={{ marginLeft: 10, opacity: 0.7 }}>{session.hours}h</span>
+          <span style={{ marginLeft: 10, opacity: 0.7 }}>{hours}h</span>
         </div>
       </div>
 

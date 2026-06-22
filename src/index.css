@@ -1,3 +1,6 @@
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -26,6 +29,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+button { font-family: inherit; }
+textarea, input, select { font-family: inherit; color: var(--text); }
+input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+select option { background: var(--surface2); }
+
+::-webkit-scrollbar { height: 6px; width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
 @keyframes pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(167,139,250,0.4); }
   50% { box-shadow: 0 0 0 6px rgba(167,139,250,0); }
@@ -36,15 +48,294 @@ body {
   50% { opacity: 0.4; }
 }
 
-button { font-family: inherit; }
-textarea, input, select { font-family: inherit; color: var(--text); }
-input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
-select option { background: var(--surface2); }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+/* ============================================================
+   SHELL & HEADER
+   ============================================================ */
+.app-shell {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 20px 60px;
+}
 
-@media (max-width: 520px) {
-  .summary-bar { grid-template-columns: repeat(2,1fr) !important; }
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 20px 0;
+}
+
+.header-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.date-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.time-pill {
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--purple);
+  background: var(--purple-bg);
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--purple-dim);
+}
+
+.nav-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-btn-accent {
+  width: auto;
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--purple);
+  border-color: var(--purple-dim);
+  background: var(--purple-bg);
+}
+
+.avatar {
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+
+/* ============================================================
+   SECTION 1 — Tasks (left) + Stats column (right), ~6:4 split
+   ============================================================ */
+.main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(240px, 1fr);
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 20px;
+}
+
+/* -- Tasks panel -- */
+.tasks-panel {
+  display: grid;
+  gap: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+}
+
+.task-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.task-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.task-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  min-width: 130px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* -- Stats column (right side) -- */
+.stats-col {
+  display: grid;
+  gap: 12px;
+}
+
+.stats-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+}
+
+.stats-ring-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.stats-mini-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stats-mini-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.stats-streak-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stats-streak-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+/* -- Quote + notes, sit below stats panel in the same column -- */
+.quote-text {
+  font-style: italic;
+  color: var(--muted);
+  line-height: 1.5;
+  font-size: 13px;
+  padding: 0 4px;
+}
+
+.notes-inline {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.notes-textarea {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 10px 12px;
+  resize: vertical;
+  min-height: 100px;
+  outline: none;
+  line-height: 1.5;
+}
+
+.notes-textarea:disabled {
+  opacity: 0.6;
+}
+
+.notes-save-btn {
+  margin-top: 8px;
+  background: var(--purple-bg);
+  border: 1px solid var(--purple-dim);
+  color: var(--purple);
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+
+/* ============================================================
+   SECTION 2 — Heatmap, free-floating (no box wrapper)
+   ============================================================ */
+.heatmap-section {
+  margin-bottom: 20px;
+}
+
+.heatmap-grid-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 6px;
+}
+
+.month-labels {
+  position: relative;
+  margin-bottom: 6px;
+}
+
+.month-label {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  position: absolute;
+  top: 0;
+}
+
+.heatmap-grid {
+  display: grid;
+}
+
+.heatmap-column {
+  display: grid;
+}
+
+.heatmap-footer {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 960px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    padding: 0 12px 40px;
+  }
+
+  .header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .stats-mini-grid,
+  .stats-streak-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .task-btn {
+    min-width: auto;
+  }
 }

@@ -6,19 +6,21 @@ import { useClock, todayKey, keyForDate, formatClock, formatDateLong } from './h
 import SessionCard from './components/SessionCard'
 import SessionEditor from './components/SessionEditor'
 import Calendar from './components/Calendar'
-import { SummaryBar, ProgressRing, StreakCards } from './components/Stats'
 import { useToast, Toast } from './components/Toast'
+import { StatsPanel } from './components/Stats'
+import { QUOTES } from './lib/quotes'
 
 export default function App() {
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [viewDate, setViewDate] = useState(todayKey())
-  const [showEditor, setShowEditor] = useState(false)
+  const [editorMode, setEditorMode] = useState(null)
   const [noteVal, setNoteVal] = useState('')
 
   const now = useClock()
   const nowHour = now.getHours() + now.getMinutes() / 60
   const { msg, visible, showToast } = useToast()
+  const userAvatar = user?.photoURL || 'https://www.google.com/favicon.ico'
 
   const { sessions, dayData, loading, error: firestoreError, saveSessions, saveDaySessions, toggleSession, saveNote, resetDay } = useFirestore(user?.uid)
 
@@ -43,10 +45,11 @@ export default function App() {
   }, [firestoreError, showToast])
 
   function changeDay(dir) {
-    const d = new Date(viewDate + 'T12:00:00')
+    const d = new Date(viewDate + 'T00:00:00')
     d.setDate(d.getDate() + dir)
-    if (d > new Date()) { showToast('Cannot go to future dates'); return }
-    setViewDate(keyForDate(d))
+    const nextKey = keyForDate(d)
+    if (nextKey > todayKey()) { showToast('Cannot go to future dates'); return }
+    setViewDate(nextKey)
   }
 
   async function handleToggle(sessionId) {
@@ -107,6 +110,32 @@ export default function App() {
   const data = dayData[viewDate] || {}
   const currentSessions = data.sessions?.length ? data.sessions : sessions
 
+  const doneCount = currentSessions.filter(s => data.completed?.[s.id]).length
+  const totalCount = currentSessions.length
+  const completionPct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0
+
+  const activeDays = Object.entries(dayData).reduce((count, [key, value]) => {
+    const daySessions = value.sessions?.length ? value.sessions : sessions
+    const completedCount = daySessions.filter(s => value.completed?.[s.id]).length
+    return completedCount > 0 ? count + 1 : count
+  }, 0)
+
+  const maxStreak = Object.keys(dayData)
+    .sort()
+    .reduce((state, key) => {
+      const value = dayData[key]
+      const daySessions = value.sessions?.length ? value.sessions : sessions
+      const completedCount = daySessions.filter(s => value.completed?.[s.id]).length
+      const streak = completedCount > 0 ? state.streak + 1 : 0
+      return {
+        streak,
+        max: Math.max(state.max, streak),
+      }
+    }, { streak: 0, max: 0 }).max
+
+  const quoteIndex = new Date(viewDate + 'T12:00:00').getDate() + new Date(viewDate + 'T12:00:00').getMonth() + new Date(viewDate + 'T12:00:00').getFullYear()
+  const quote = QUOTES[quoteIndex % QUOTES.length]
+
   // ── AUTH SCREEN ──
   if (authLoading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--muted)' }}>Loading…</div>
 
@@ -157,116 +186,98 @@ export default function App() {
   // ── MAIN APP ──
   return (
     <>
-      {/* HEADER */}
-      <div style={{
-        padding: '16px 24px', borderBottom: '1px solid var(--border)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 100,
-      }}>
-        <div>
-          <div style={{ fontSize: 17, fontWeight: 600 }}>Study Tracker</div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)', marginTop: 2 }}>
-            {now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+      <div className="app-shell">
+
+       <div className="header-row">
+          <div>
+            <div className="header-title">Study Tracker</div>
+            <div className="date-label">{formatDateLong(viewDate)}</div>
+          </div>
+          <div className="header-meta">
+            <div className="time-pill">{formatClock(now)}</div>
+            <button onClick={() => changeDay(-1)} className="nav-btn">←</button>
+            {!isToday && (
+              <button onClick={() => setViewDate(todayKey())} className="nav-btn nav-btn-accent">
+                Today
+              </button>
+            )}
+            <button onClick={() => changeDay(1)} className="nav-btn">→</button>
+            <img src={userAvatar} width={34} height={34} alt="Profile" className="avatar"
+              onClick={() => { if (window.confirm('Sign out?')) signOut(auth) }}
+              title="Click to sign out" />
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            fontFamily: 'var(--mono)', fontSize: 14, color: 'var(--purple)',
-            background: 'var(--purple-bg)', padding: '6px 14px', borderRadius: 8,
-            border: '1px solid var(--purple-dim)', letterSpacing: 1,
-          }}>{formatClock(now)}</div>
-          <img src={user.photoURL} width={30} height={30}
-            style={{ borderRadius: '50%', border: '1px solid var(--border)', cursor: 'pointer' }}
-            onClick={() => { if (window.confirm('Sign out?')) signOut(auth) }}
-            title="Click to sign out" alt="avatar" />
-        </div>
-      </div>
 
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 20px 60px' }}>
+      <div className="main-grid">
+          <div className="tasks-panel">
+            <div className="task-header">
+              <div style={{ fontSize: 13, color: 'var(--muted)' }}>Tasks</div>
+              <div className="task-buttons">
+  <button onClick={() => setEditorMode('today')} className="task-btn">✎ Edit</button>
+</div>
+            </div>
 
-        {/* DATE NAV */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '20px 0 16px' }}>
-          <button onClick={() => changeDay(-1)} style={navBtn}>←</button>
-          <span style={{ flex: 1, fontSize: 14, fontWeight: 500 }}>
-            {isToday ? 'Today — ' : ''}{formatDateLong(viewDate)}
-          </span>
-          {!isToday && <button onClick={() => setViewDate(todayKey())} style={{ ...navBtn, color: 'var(--purple)', borderColor: 'var(--purple-dim)', background: 'var(--purple-bg)', width: 'auto', padding: '0 12px', fontSize: 12 }}>Today</button>}
-          <button onClick={() => changeDay(1)} style={navBtn}>→</button>
-        </div>
-
-        {/* STATS */}
-        <SummaryBar sessions={currentSessions} dayData={dayData} viewDate={viewDate} />
-        <ProgressRing sessions={currentSessions} dayData={dayData} viewDate={viewDate} />
-
-        {/* SESSIONS */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)' }}>Tasks</div>
-          {isToday && <button onClick={() => setShowEditor(true)} style={{
-            background: 'none', border: '1px solid var(--border)', color: 'var(--muted)',
-            fontSize: 11, padding: '4px 12px', borderRadius: 8, cursor: 'pointer',
-          }}>✎ Edit tasks</button>}
-        </div>
-
-        {currentSessions.map(s => (
-          <SessionCard key={s.id} session={s} done={!!data.completed?.[s.id]}
-            viewDate={viewDate} nowHour={nowHour} onToggle={handleToggle} />
-        ))}
-
-        {/* STREAK */}
-        <div style={{ marginTop: 28 }}>
-          <StreakCards sessions={sessions} dayData={dayData} />
-        </div>
-
-        {/* CALENDAR */}
-        <Calendar sessions={sessions} dayData={dayData} viewDate={viewDate} onSelectDate={setViewDate} />
-
-        {/* NOTE */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18, marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10, fontWeight: 500 }}>Daily note</div>
-          <textarea
-            value={noteVal}
-            onChange={e => setNoteVal(e.target.value)}
-            disabled={!isToday}
-            placeholder={isToday ? 'What did you work on? Wins, blockers, insights…' : 'Read-only for past days'}
-            style={{
-              width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
-              borderRadius: 8, color: 'var(--text)', fontFamily: 'inherit',
-              fontSize: 13, padding: '10px 12px', resize: 'vertical', minHeight: 72,
-              outline: 'none', lineHeight: 1.5, opacity: isToday ? 1 : 0.6,
-            }}
-          />
-          {isToday && (
-            <button onClick={handleSaveNote} style={{
-              marginTop: 8, background: 'var(--purple-bg)', border: '1px solid var(--purple-dim)',
-              color: 'var(--purple)', padding: '6px 16px', borderRadius: 8,
-              fontSize: 12, cursor: 'pointer',
-            }}>Save note</button>
-          )}
-        </div>
-
-        {/* RESET */}
-        {isToday && (
-          <div style={{ textAlign: 'right' }}>
-            <button onClick={handleReset} style={{
-              background: 'none', border: '1px solid var(--border)', color: 'var(--muted)',
-              fontSize: 11, padding: '5px 12px', borderRadius: 6, cursor: 'pointer',
-            }}>Reset today</button>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {currentSessions.map(s => (
+                <SessionCard key={s.id} session={s} done={!!data.completed?.[s.id]}
+                  viewDate={viewDate} nowHour={nowHour} onToggle={handleToggle} />
+              ))}
+            </div>
           </div>
-        )}
+
+        <div className="stats-col">
+  <StatsPanel sessions={sessions} dayData={dayData} viewDate={viewDate} />
+
+  <div className="quote-text">"{quote}"</div>
+
+  <div className="notes-inline">
+    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8, fontWeight: 500 }}>Daily note</div>
+    <textarea
+      value={noteVal}
+      onChange={e => setNoteVal(e.target.value)}
+      disabled={!isToday}
+      placeholder={isToday ? 'What did you work on? Wins, blockers, insights…' : 'Read-only for past days'}
+      className="notes-textarea"
+    />
+    {isToday && (
+      <button onClick={handleSaveNote} className="notes-save-btn">Save note</button>
+    )}
+  </div>
+</div>
+        </div>
+
+        <div className="heatmap-section">
+          <Calendar sessions={sessions} dayData={dayData} viewDate={viewDate} onSelectDate={setViewDate} activeDays={activeDays} maxStreak={maxStreak} />
+        </div>
+
+       
       </div>
 
-      {showEditor && (
-        <SessionEditor
-          sessions={currentSessions}
-          onSave={async (newSessions, saveAsDefault) => {
-            await saveDaySessions(viewDate, newSessions)
-            if (saveAsDefault) await saveSessions(newSessions)
-            setShowEditor(false)
-            showToast(saveAsDefault ? 'Tasks saved and set as default' : 'Today\'s tasks saved')
-          }}
-          onClose={() => setShowEditor(false)}
-        />
-      )}
+     {editorMode && (
+  <SessionEditor
+    sessions={currentSessions}
+    title="Edit today's plan"
+    saveLabel="Save"
+    showDefaultOption={true}
+    onSave={async (newSessions, setAsDefault) => {
+      try {
+        await saveDaySessions(viewDate, newSessions)
+        if (setAsDefault) {
+          await saveSessions(newSessions)
+          showToast('Saved and set as default for upcoming days')
+        } else {
+          showToast('Today\'s plan saved')
+        }
+      } catch (err) {
+        console.error(err)
+        showToast(err.code === 'permission-denied' ? 'Firestore rules are blocking this update' : 'Could not save plan')
+      } finally {
+        setEditorMode(null)
+      }
+    }}
+    onClose={() => setEditorMode(null)}
+  />
+)}
 
       <Toast msg={msg} visible={visible} />
     </>
@@ -277,4 +288,10 @@ const navBtn = {
   background: 'var(--surface)', border: '1px solid var(--border)',
   color: 'var(--text)', width: 32, height: 32, borderRadius: 8,
   cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+}
+
+const editorBtn = {
+  background: 'var(--surface)', border: '1px solid var(--border)',
+  color: 'var(--text)', borderRadius: 12, padding: '10px 14px', cursor: 'pointer',
+  fontSize: 13, minWidth: 130, textAlign: 'center', whiteSpace: 'nowrap',
 }

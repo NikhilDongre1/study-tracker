@@ -1,7 +1,15 @@
 import { useState } from 'react'
 import { ACCENT_COLORS, SESSION_TYPES, DEFAULT_SESSIONS } from '../lib/defaults'
+import { calculateSessionHours, normalizeSessions } from '../lib/sessionUtils'
 
-export default function SessionEditor({ sessions, onSave, onClose }) {
+export default function SessionEditor({
+  sessions,
+  onSave,
+  onClose,
+  title = "Edit Today's Tasks",
+  saveLabel = 'Save tasks',
+  showDefaultOption = false,
+}) {
   const [list, setList] = useState(sessions.map(s => ({ ...s })))
   const [editingId, setEditingId] = useState(null)
   const [saveAsDefault, setSaveAsDefault] = useState(false)
@@ -20,7 +28,6 @@ export default function SessionEditor({ sessions, onSave, onClose }) {
       desc: '',
       timeStart: '08:00',
       timeEnd: '10:00',
-      hours: 2,
       color: '#a78bfa',
       type: 'Deep Work',
     }])
@@ -60,7 +67,7 @@ export default function SessionEditor({ sessions, onSave, onClose }) {
         maxHeight: '90vh', overflow: 'auto', padding: 24,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 600 }}>Edit Today's Tasks</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 600 }}>{title}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 20, cursor: 'pointer' }}>✕</button>
         </div>
 
@@ -115,11 +122,6 @@ export default function SessionEditor({ sessions, onSave, onClose }) {
                     onChange={e => updateField(s.id, 'timeEnd', e.target.value)} />
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, color: 'var(--muted)' }}>Hours</label>
-                  <input style={inputStyle} type="number" step="0.5" min="0.5" max="12" value={s.hours}
-                    onChange={e => updateField(s.id, 'hours', parseFloat(e.target.value))} />
-                </div>
-                <div>
                   <label style={{ fontSize: 11, color: 'var(--muted)' }}>Type</label>
                   <select style={{ ...inputStyle, appearance: 'auto' }} value={s.type}
                     onChange={e => updateField(s.id, 'type', e.target.value)}>
@@ -154,7 +156,7 @@ export default function SessionEditor({ sessions, onSave, onClose }) {
           color: 'var(--muted)', fontSize: 13, cursor: 'pointer', marginTop: 4,
         }}>+ Add task</button>
 
-        <label style={{
+        {showDefaultOption && <label style={{
           display: 'flex', alignItems: 'flex-start', gap: 10,
           marginTop: 14, color: 'var(--muted)', fontSize: 12,
           lineHeight: 1.4, cursor: 'pointer',
@@ -166,7 +168,7 @@ export default function SessionEditor({ sessions, onSave, onClose }) {
             style={{ marginTop: 2 }}
           />
           <span>Use this list as my default for new days</span>
-        </label>
+        </label>}
 
         <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
           <button onClick={() => { if (confirm('Reset to default tasks?')) setList(DEFAULT_SESSIONS.map(s => ({ ...s }))) }}
@@ -175,12 +177,12 @@ export default function SessionEditor({ sessions, onSave, onClose }) {
               border: '1px solid var(--border)', borderRadius: 10,
               color: 'var(--muted)', fontSize: 13, cursor: 'pointer',
             }}>Reset defaults</button>
-          <button onClick={() => onSave(list, saveAsDefault)}
+          <button onClick={() => onSave(normalizeSessions(list), saveAsDefault)}
             style={{
               flex: 2, padding: '10px', background: 'var(--purple)',
               border: 'none', borderRadius: 10,
               color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            }}>Save tasks</button>
+            }}>{saveLabel}</button>
         </div>
       </div>
     </div>

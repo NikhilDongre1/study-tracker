@@ -5,7 +5,6 @@ export const DEFAULT_SESSIONS = [
     desc: 'DSA / System Design',
     timeStart: '06:30',
     timeEnd: '09:00',
-    hours: 2.5,
     color: '#a78bfa',
     type: 'Deep Work',
   },

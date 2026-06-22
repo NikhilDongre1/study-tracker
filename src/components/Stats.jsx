@@ -1,88 +1,71 @@
 import { todayKey, keyForDate } from '../hooks/useClock'
+import { calculateSessionHours } from '../lib/sessionUtils'
 
-export function SummaryBar({ sessions, dayData, viewDate }) {
+// Compact stats panel for the right column (6:4 split with tasks).
+// Stacks vertically: 2x2 mini-stat grid + current streak line.
+export function StatsPanel({ sessions, dayData, viewDate }) {
   const data = dayData[viewDate] || {}
-  const done = sessions.filter(s => data.completed?.[s.id]).length
-  const pct = sessions.length ? Math.round((done / sessions.length) * 100) : 0
-  const hrs = sessions.filter(s => data.completed?.[s.id]).reduce((a, s) => a + s.hours, 0)
-  const streak = calcStreak(sessions, dayData)
-
-  const cards = [
-    { val: done, label: 'Sessions done', color: 'var(--purple)' },
-    { val: pct + '%', label: 'Completion', color: '#4ade80' },
-    { val: hrs + 'h', label: 'Hours logged', color: 'var(--blue)' },
-    { val: streak + '🔥', label: 'Day streak', color: '#fbbf24' },
-  ]
-
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 20 }}>
-      {cards.map(c => (
-        <div key={c.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
-          <div style={{ fontSize: 26, fontWeight: 600, fontFamily: 'var(--mono)', color: c.color, lineHeight: 1 }}>{c.val}</div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 5 }}>{c.label}</div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-export function ProgressRing({ sessions, dayData, viewDate }) {
-  const data = dayData[viewDate] || {}
-  const done = sessions.filter(s => data.completed?.[s.id]).length
-  const total = sessions.length
+  const daySessions = data.sessions?.length ? data.sessions : sessions
+  const done = daySessions.filter(s => data.completed?.[s.id]).length
+  const total = daySessions.length
   const pct = total ? Math.round((done / total) * 100) : 0
-  const circumference = 232.5
-  const offset = circumference - (pct / 100) * circumference
-
-  const titles = ['Let\'s get started', 'Good start!', 'Building momentum', 'More than halfway!', 'Almost done!', 'Perfect day! 🔥']
-  const subs = [
-    'Tap a session below when you finish it.',
-    'First block done. Keep the momentum.',
-    'Strong work. Keep going.',
-    'Over halfway. You\'re in flow.',
-    'One session left. Finish strong.',
-    'All sessions complete. Incredible day.',
-  ]
-
-  return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 20, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 24 }}>
-      <div style={{ position: 'relative', width: 90, height: 90, flexShrink: 0 }}>
-        <svg width="90" height="90" viewBox="0 0 90 90" style={{ transform: 'rotate(-90deg)' }}>
-          <circle cx="45" cy="45" r="37" fill="none" stroke="var(--border)" strokeWidth="8" />
-          <circle cx="45" cy="45" r="37" fill="none" stroke="var(--purple)"
-            strokeWidth="8" strokeLinecap="round"
-            strokeDasharray={circumference} strokeDashoffset={offset}
-            style={{ transition: 'stroke-dashoffset 0.5s ease' }} />
-        </svg>
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center' }}>
-          <div style={{ fontSize: 18, fontWeight: 600, fontFamily: 'var(--mono)', color: 'var(--purple)' }}>{pct}%</div>
-          <div style={{ fontSize: 10, color: 'var(--muted)' }}>{done}/{total}</div>
-        </div>
-      </div>
-      <div>
-        <h3 style={{ fontSize: 15, fontWeight: 500, marginBottom: 4 }}>{titles[Math.min(done, 5)]}</h3>
-        <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>{subs[Math.min(done, 5)]}</p>
-      </div>
-    </div>
-  )
-}
-
-export function StreakCards({ sessions, dayData }) {
+  const hrs = daySessions
+    .filter(s => data.completed?.[s.id])
+    .reduce((a, s) => a + calculateSessionHours(s.timeStart, s.timeEnd), 0)
   const streak = calcStreak(sessions, dayData)
   const perfect = countPerfectMonth(sessions, dayData)
 
+  const circumference = 175.9 // 2 * PI * 28
+  const offset = circumference - (pct / 100) * circumference
+
+  const miniStats = [
+    { val: done, label: 'Done today', color: 'var(--purple)' },
+    { val: hrs.toFixed(1) + 'h', label: 'Hours logged', color: 'var(--blue)' },
+  ]
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-      {[
-        { label: 'Current streak', val: streak, sub: 'days in a row', color: '#fbbf24' },
-        { label: 'Perfect days this month', val: perfect, sub: 'all sessions done', color: '#4ade80' },
-      ].map(c => (
-        <div key={c.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px' }}>
-          <div style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>{c.label}</div>
-          <div style={{ fontSize: 32, fontWeight: 600, fontFamily: 'var(--mono)', color: c.color }}>{c.val}</div>
-          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>{c.sub}</div>
+    <div className="stats-panel">
+      {/* Ring + completion */}
+      <div className="stats-ring-row">
+        <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
+          <svg width="64" height="64" viewBox="0 0 64 64" style={{ transform: 'rotate(-90deg)' }}>
+            <circle cx="32" cy="32" r="28" fill="none" stroke="var(--border)" strokeWidth="6" />
+            <circle cx="32" cy="32" r="28" fill="none" stroke="var(--purple)"
+              strokeWidth="6" strokeLinecap="round"
+              strokeDasharray={circumference} strokeDashoffset={offset}
+              style={{ transition: 'stroke-dashoffset 0.5s ease' }} />
+          </svg>
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--mono)', color: 'var(--purple)' }}>{pct}%</div>
+          </div>
         </div>
-      ))}
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>{done}/{total} sessions</div>
+          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>completed today</div>
+        </div>
+      </div>
+
+      {/* Mini stat grid */}
+      <div className="stats-mini-grid">
+        {miniStats.map(s => (
+          <div key={s.label} className="stats-mini-card">
+            <div style={{ fontSize: 18, fontWeight: 600, fontFamily: 'var(--mono)', color: s.color, lineHeight: 1 }}>{s.val}</div>
+            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Streak */}
+      <div className="stats-streak-row">
+        <div className="stats-streak-card">
+          <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Current streak</div>
+          <div style={{ fontSize: 24, fontWeight: 600, fontFamily: 'var(--mono)', color: '#fbbf24', marginTop: 4 }}>{streak}🔥</div>
+        </div>
+        <div className="stats-streak-card">
+          <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Perfect days</div>
+          <div style={{ fontSize: 24, fontWeight: 600, fontFamily: 'var(--mono)', color: '#4ade80', marginTop: 4 }}>{perfect}</div>
+        </div>
+      </div>
     </div>
   )
 }
