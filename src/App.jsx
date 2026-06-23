@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged } from 'firebase/auth'
+import { signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged, getRedirectResult } from 'firebase/auth'
 import { auth, googleProvider } from './lib/firebase'
 import { useFirestore } from './hooks/useFirestore'
 import { useClock, todayKey, keyForDate, formatClock, formatDateLong } from './hooks/useClock'
@@ -9,6 +9,7 @@ import Calendar from './components/Calendar'
 import { useToast, Toast } from './components/Toast'
 import { StatsPanel } from './components/Stats'
 import { QUOTES } from './lib/quotes'
+
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -29,6 +30,12 @@ export default function App() {
     const unsub = onAuthStateChanged(auth, u => { setUser(u); setAuthLoading(false) })
     return unsub
   }, [])
+
+  useEffect(() => {
+  getRedirectResult(auth).catch(err => {
+    console.error('Redirect result error:', err)
+  })
+}, [])
 
   // Sync note to viewDate
   useEffect(() => {
