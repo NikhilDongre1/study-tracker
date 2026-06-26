@@ -96,22 +96,25 @@ export default function App() {
     }
   }
 
-  async function handleGoogleSignIn() {
-    try {
-      await signInWithPopup(auth, googleProvider)
-    } catch (err) {
-      console.error(err)
-      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
-        await signInWithRedirect(auth, googleProvider)
-        return
-      }
-      if (err.code === 'auth/configuration-not-found') {
-        showToast('Enable Google sign-in in Firebase Authentication')
-        return
-      }
-      showToast(err.message || 'Google sign-in failed')
+async function handleGoogleSignIn() {
+  try {
+    await signInWithPopup(auth, googleProvider)
+  } catch (err) {
+    console.error(err)
+    if (err.code === 'auth/popup-blocked') {
+      showToast('Popup blocked — please allow popups for this site and try again')
+      return
     }
+    if (err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
+      return
+    }
+    if (err.code === 'auth/configuration-not-found') {
+      showToast('Enable Google sign-in in Firebase Authentication')
+      return
+    }
+    showToast(err.message || 'Google sign-in failed')
   }
+}
 
   const isToday = viewDate === todayKey()
   const data = dayData[viewDate] || {}
