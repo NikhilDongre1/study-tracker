@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
+import { signInWithPopup, signOut, onAuthStateChanged,GoogleAuthProvider } from 'firebase/auth'
 import { auth, googleProvider } from './lib/firebase'
 import { useFirestore } from './hooks/useFirestore'
 import { useClock, todayKey, keyForDate, formatClock, formatDateLong } from './hooks/useClock'
@@ -30,6 +30,10 @@ export default function App() {
     const unsub = onAuthStateChanged(auth, u => { setUser(u); setAuthLoading(false) })
     return unsub
   }, [])
+  useEffect(() => {
+  auth.currentUser
+}, [])
+
 
 
   // Sync note to viewDate
@@ -91,11 +95,14 @@ export default function App() {
     }
   }
 
-async function handleGoogleSignIn() {
+async function handleGoogleSignIn(isRetry = false) {
   try {
     await signInWithPopup(auth, googleProvider)
   } catch (err) {
     console.error(err)
+    if (err.code === 'auth/popup-blocked' && !isRetry) {
+      return handleGoogleSignIn(true)
+    }
     if (err.code === 'auth/popup-blocked') {
       showToast('Popup blocked — please allow popups for this site and try again')
       return
