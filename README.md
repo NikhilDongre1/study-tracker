@@ -3,8 +3,10 @@
 A React + Firebase study session tracker with a GitHub-style yearly heatmap, streaks, customizable sessions, daily notes, and motivational quotes — synced across devices via Google sign-in.
 
 ---
-
+<img width="1920" height="1080" alt="Screenshot 2026-06-26 200024" src="https://github.com/user-attachments/assets/a260825d-416e-4f50-8028-a2a9b21f7014" />
 <img width="1920" height="1080" alt="Screenshot 2026-06-26 195843" src="https://github.com/user-attachments/assets/1f3808b4-8356-450b-9eca-85e217ad94db" />
+<img width="1920" height="1080" alt="Screenshot 2026-06-26 195957" src="https://github.com/user-attachments/assets/c005e3e8-0ac1-49f1-b3bd-0844ec0fcf4e" />
+
 
 
 ## Setup (10 minutes)
