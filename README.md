@@ -4,6 +4,9 @@ A React + Firebase study session tracker with a GitHub-style yearly heatmap, str
 
 ---
 
+<img width="1920" height="1080" alt="Screenshot 2026-06-26 195843" src="https://github.com/user-attachments/assets/1f3808b4-8356-450b-9eca-85e217ad94db" />
+
+
 ## Setup (10 minutes)
 
 ### 1. Install dependencies
