@@ -1,6 +1,6 @@
 # Study Tracker
 
-A React + Firebase study session tracker with streaks, calendar, and customizable sessions.
+A React + Firebase study session tracker with a GitHub-style yearly heatmap, streaks, customizable sessions, daily notes, and motivational quotes — synced across devices via Google sign-in.
 
 ---
 
@@ -37,21 +37,48 @@ vercel --prod
 
 Or drag the `dist/` folder to https://vercel.com/new after `npm run build`.
 
-**Important:** After deploying, add your Vercel domain to Firebase:
-- Firebase Console → Authentication → Settings → Authorized domains → Add domain
+**Important — required for Google sign-in to work on your deployed domain:**
+- Firebase Console → Authentication → Settings → Authorized domains → Add your Vercel domain (e.g. `your-app.vercel.app`)
+
+**Note on ad blockers / privacy extensions:** Browser extensions like uBlock Origin, Privacy Badger, or Brave Shields can silently block Google's OAuth popup handshake, which Firebase then reports as a generic `auth/popup-blocked` error — even though no real browser popup blocker was triggered (no address-bar icon appears). If sign-in fails only for you and not for others, test in an Incognito window with extensions disabled before assuming it's a config issue.
 
 ---
 
 ## Features
 
-- **Google Sign-in** — data synced across all your devices via Firestore
-- **5 study sessions** — fully customizable (name, time, color, type, description)
-- **Progress ring** — fills as you complete sessions
-- **Live clock** — auto-detects current session (● Now indicator)
-- **Streak counter** — consecutive days with at least one session
-- **Monthly calendar** — green = perfect day, amber = partial
-- **Daily notes** — one note per day, read-only for past dates
-- **Date navigation** — browse any past day
+**Authentication**
+- Google Sign-in via Firebase Auth — data synced across all devices
+
+**Tasks / Sessions**
+- Fully customizable study sessions — name, description, time range, duration, color, and type — added, removed, and reordered via a single **Edit** button
+- Editing applies to the current day's plan; an optional toggle inside the editor lets you also set the edited plan as the default for upcoming days
+- Live "● Now" indicator on whichever session matches the current time
+- One-tap completion toggle per session
+
+**Stats panel**
+- Compact progress ring showing today's completion %
+- Hours logged today
+- Current streak (consecutive days with at least one session completed)
+- Perfect days this month (all sessions completed)
+
+**Yearly heatmap**
+- GitHub-style contribution heatmap for the full year, free-floating (no box), with month labels aligned to actual calendar weeks
+- Cell intensity reflects that day's actual completion percentage (not a fixed scale), so days with different session counts are compared fairly
+- Hovering a cell shows real session counts for that specific day (e.g. "3/5 sessions completed")
+- Click any past day to view/edit that day's data
+- Cell size auto-scales to fill the available panel width, within sane min/max bounds
+- "Total active days" and "Max streak" summary below the grid
+
+**Quote + Notes**
+- Daily motivational quote (rotates by date, no box — sits free in the layout)
+- One note per day, editable for today, read-only when viewing past dates
+
+**Navigation**
+- Step backward/forward through past days; "Today" shortcut button
+- Live clock and full date display in the header
+
+**Responsive layout**
+- Tasks (left) + stats column (right) in roughly a 6:4 split on desktop, stacking to a single column on mobile
 
 ---
 
@@ -60,20 +87,23 @@ Or drag the `dist/` folder to https://vercel.com/new after `npm run build`.
 ```
 src/
   lib/
-    firebase.js      ← Put your Firebase config here
-    defaults.js      ← Default sessions + color/type options
+    firebase.js       ← Your Firebase config goes here
+    defaults.js       ← Default sessions + color/type options
+    quotes.js         ← Quote pool for the daily quote
+    sessionUtils.js   ← Shared session math (e.g. calculateSessionHours)
   hooks/
-    useFirestore.js  ← All Firestore read/write logic
-    useClock.js      ← Live clock + date utilities
+    useFirestore.js   ← All Firestore read/write logic (sessions, day data, notes)
+    useClock.js       ← Live clock + date utilities
   components/
-    SessionCard.jsx  ← Individual session row
-    SessionEditor.jsx ← Edit sessions modal
-    Calendar.jsx     ← Monthly calendar
-    Stats.jsx        ← Ring, summary bar, streak cards
-    Toast.jsx        ← Notification toasts
-  App.jsx            ← Main app + auth
-  main.jsx           ← Entry point
-  index.css          ← Global styles + CSS variables
+    SessionCard.jsx   ← Individual session row (today's task list)
+    SessionEditor.jsx ← Edit sessions modal (today's plan + set-as-default toggle)
+    Calendar.jsx      ← Yearly heatmap, month labels, footer stats
+    Stats.jsx         ← StatsPanel: ring, mini stats, streak cards
+    Toast.jsx         ← Notification toasts
+  App.jsx             ← Main app shell, auth, layout
+  main.jsx            ← Entry point
+  index.css           ← Global styles + CSS variables
+vercel.json           ← COOP/COEP headers (required for Google sign-in popup on Vercel)
 ```
 
 ---
@@ -84,8 +114,23 @@ src/
 users/
   {uid}/
     config/
-      sessions → { list: [...] }   ← user's custom sessions
+      sessions → { list: [...] }   ← user's default session plan
     days/
-      2025-06-14 → { completed: { s1: true, s3: true }, note: "..." }
-      2025-06-15 → { completed: { s1: true }, note: "" }
+      2026-06-14 → {
+        completed: { s1: true, s3: true },
+        note: "...",
+        sessions: [...]            ← optional: only present if that day's
+                                       plan was customized away from default
+      }
+      2026-06-15 → { completed: { s1: true }, note: "" }
 ```
+
+If a day's document has no `sessions` array, the app falls back to the user's default plan from `config/sessions`.
+
+---
+
+## Known gotchas
+
+- **`auth/unauthorized-domain`** — your deployed domain isn't in Firebase's Authorized domains list yet. Add it (see Deploy section above).
+- **`auth/popup-blocked` with no visible browser icon** — almost always an ad blocker or privacy extension interfering with Google's OAuth handshake, not an actual Chrome popup block. Test in Incognito with extensions off to confirm.
+- **COOP/COEP headers** — `vercel.json` sets `Cross-Origin-Opener-Policy: same-origin-allow-popups` and `Cross-Origin-Embedder-Policy: unsafe-none`, which Firebase's popup-based auth needs to reliably detect when the popup closes. Don't remove these if deploying to Vercel.
