@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged, getRedirectResult } from 'firebase/auth'
+import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
 import { auth, googleProvider } from './lib/firebase'
 import { useFirestore } from './hooks/useFirestore'
 import { useClock, todayKey, keyForDate, formatClock, formatDateLong } from './hooks/useClock'
@@ -31,11 +31,6 @@ export default function App() {
     return unsub
   }, [])
 
-  useEffect(() => {
-  getRedirectResult(auth).catch(err => {
-    console.error('Redirect result error:', err)
-  })
-}, [])
 
   // Sync note to viewDate
   useEffect(() => {
