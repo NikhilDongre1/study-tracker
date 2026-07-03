@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   doc, setDoc, onSnapshot, collection
 } from 'firebase/firestore'
@@ -45,23 +45,34 @@ export function useFirestore(userId) {
   }, [userId])
 
   // Create today's task list from the default template the first time the day appears.
-  useEffect(() => {
-    if (!userId || !configLoaded || !daysLoaded || !sessions.length) return
+const hasInitedToday = useRef(false)
 
-    const key = todayKey()
-    const existing = dayData[key]
-    if (existing?.sessions?.length) return
+useEffect(() => {
+  if (!userId || !configLoaded || !daysLoaded || !sessions.length) return
+  
+  const key = todayKey()
+  const existing = dayData[key]
+  
+  // Already has sessions saved for today — never overwrite
+  if (existing?.sessions?.length) {
+    hasInitedToday.current = true
+    return
+  }
+  
+  // Only init once per app session, not on every sessions/dayData change
+  if (hasInitedToday.current) return
+  hasInitedToday.current = true
 
-    const ref = doc(db, 'users', userId, 'days', key)
-    setDoc(ref, {
-      completed: existing?.completed || {},
-      note: existing?.note || '',
-      sessions: normalizeSessions(sessions),
-    }, { merge: true }).catch(err => {
-      console.error(err)
-      setError(err)
-    })
-  }, [userId, configLoaded, daysLoaded, sessions, dayData])
+  const ref = doc(db, 'users', userId, 'days', key)
+  setDoc(ref, {
+    completed: existing?.completed || {},
+    note: existing?.note || '',
+    sessions: normalizeSessions(sessions),
+  }, { merge: true }).catch(err => {
+    console.error(err)
+    setError(err)
+  })
+}, [userId, configLoaded, daysLoaded, dayData])
 
   // Load all day data for this user (listen to changes)
   useEffect(() => {
@@ -90,11 +101,11 @@ export function useFirestore(userId) {
     setLoading(!(configLoaded && daysLoaded))
   }, [userId, configLoaded, daysLoaded])
 
-  const saveSessions = useCallback(async (newSessions) => {
-    if (!userId) return
-    const ref = doc(db, 'users', userId, 'config', 'sessions')
-    await setDoc(ref, { list: normalizeSessions(newSessions) })
-  }, [userId])
+const saveSessions = useCallback(async (newSessions) => {
+  if (!userId) return
+  const ref = doc(db, 'users', userId, 'config', 'sessions')
+  await setDoc(ref, { list: normalizeSessions(newSessions) })
+}, [userId])
 
   const saveDaySessions = useCallback(async (dateKey, newSessions) => {
     if (!userId) return
