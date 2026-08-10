@@ -1,3 +1,4 @@
+
 export const QUOTES = [
   "You do not rise to the level of your goals. You fall to the level of your systems. — James Clear",
   "Every action you take is a vote for the type of person you wish to become. — James Clear",
