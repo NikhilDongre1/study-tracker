@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  doc, setDoc, onSnapshot, collection
+  doc, setDoc, onSnapshot, collection, runTransaction
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { DEFAULT_SESSIONS } from '../lib/defaults'
@@ -17,6 +17,8 @@ export function useFirestore(userId) {
   const [loading, setLoading] = useState(true)
   const [configLoaded, setConfigLoaded] = useState(false)
   const [daysLoaded, setDaysLoaded] = useState(false)
+  const [configSynced, setConfigSynced] = useState(false)
+  const [daysSynced, setDaysSynced] = useState(false)
   const [error, setError] = useState(null)
 
   // Load session config (user's custom sessions)
@@ -27,6 +29,7 @@ export function useFirestore(userId) {
     }
     setError(null)
     setConfigLoaded(false)
+    setConfigSynced(false)
     const ref = doc(db, 'users', userId, 'config', 'sessions')
     const unsub = onSnapshot(
       ref,
@@ -34,6 +37,7 @@ export function useFirestore(userId) {
         if (snap.exists()) setSessions(normalizeSessions(snap.data().list || []))
         else setSessions(normalizeSessions(DEFAULT_SESSIONS))
         setConfigLoaded(true)
+        if (!snap.metadata.fromCache) setConfigSynced(true)
       },
       err => {
         console.error(err)
@@ -45,39 +49,45 @@ export function useFirestore(userId) {
   }, [userId])
 
   // Create today's task list from the default template the first time the day appears.
-const hasInitedToday = useRef(false)
+  const initializedDays = useRef(new Set())
 
 useEffect(() => {
-  if (!userId || !configLoaded || !daysLoaded || !sessions.length) return
+  if (!userId || !configSynced || !daysSynced || !sessions.length) return
   
   const key = todayKey()
+  const initializationKey = `${userId}:${key}`
+  if (initializedDays.current.has(initializationKey)) return
+  initializedDays.current.add(initializationKey)
   const existing = dayData[key]
   
   // Already has sessions saved for today — never overwrite
   if (existing?.sessions?.length) {
-    hasInitedToday.current = true
     return
   }
   
   // Only init once per app session, not on every sessions/dayData change
-  if (hasInitedToday.current) return
-  hasInitedToday.current = true
-
   const ref = doc(db, 'users', userId, 'days', key)
-  setDoc(ref, {
-    completed: existing?.completed || {},
-    note: existing?.note || '',
-    sessions: normalizeSessions(sessions),
-  }, { merge: true }).catch(err => {
-    console.error(err)
-    setError(err)
+  runTransaction(db, async transaction => {
+    const remoteDay = await transaction.get(ref)
+    if (remoteDay.exists()) return
+
+    transaction.set(ref, {
+      completed: {},
+      note: '',
+      sessions: normalizeSessions(sessions),
+    })
+  }).catch(err => {
+    // Do not fall back to setDoc: an offline transaction fails instead of
+    // queueing a write based on incomplete cached data.
+    console.warn('Could not initialize today\'s tasks safely', err)
   })
-}, [userId, configLoaded, daysLoaded, dayData])
+}, [userId, configSynced, daysSynced, sessions, dayData])
 
   // Load all day data for this user (listen to changes)
   useEffect(() => {
     if (!userId) return
     setDaysLoaded(false)
+    setDaysSynced(false)
     const col = collection(db, 'users', userId, 'days')
     const unsub = onSnapshot(
       col,
@@ -86,6 +96,7 @@ useEffect(() => {
         snap.forEach(d => { data[d.id] = d.data() })
         setDayData(data)
         setDaysLoaded(true)
+        if (!snap.metadata.fromCache) setDaysSynced(true)
       },
       err => {
         console.error(err)
