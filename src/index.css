@@ -31,7 +31,7 @@ body {
 
 button { font-family: inherit; }
 textarea, input, select { font-family: inherit; color: var(--text); }
-input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+input[type="time"]::-webkit-calendar-picker-indicator, input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
 select option { background: var(--surface2); }
 
 ::-webkit-scrollbar { height: 6px; width: 6px; }
@@ -50,13 +50,13 @@ select option { background: var(--surface2); }
 
 
 /* ============================================================
-   SHELL & HEADER
+   SHELL & HEADER (full width)
    ============================================================ */
 .app-shell {
-  max-width: 1200px;
+  max-width: none;
   width: 100%;
   margin: 0 auto;
-  padding: 0 20px 60px;
+  padding: 0 24px 60px;
 }
 
 .header-row {
@@ -127,15 +127,104 @@ select option { background: var(--surface2); }
 
 
 /* ============================================================
-   SECTION 1 — Tasks (left) + Stats column (right), ~6:4 split
+   ROW 1 — Brain dump (left) + Tasks (mid) + Stats column (right)
    ============================================================ */
 .main-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(240px, 1fr);
+  grid-template-columns: minmax(230px, 0.85fr) minmax(0, 1.5fr) minmax(250px, 1fr);
   gap: 20px;
   align-items: start;
   margin-bottom: 20px;
 }
+
+/* -- Brain dump inbox -- */
+.braindump-panel {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  background: var(--surface);
+  border: 1px dashed var(--border2);
+  border-radius: 18px;
+  padding: 20px;
+}
+
+.dump-add { display: flex; gap: 8px; }
+
+.dump-add input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+  color-scheme: dark;
+}
+
+.dump-add button {
+  background: var(--purple-bg);
+  border: 1px solid var(--purple-dim);
+  color: var(--purple);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dump-add button:disabled { opacity: 0.5; cursor: default; }
+
+.dump-list { display: grid; gap: 8px; }
+
+.dump-empty { font-size: 12px; color: var(--muted2); line-height: 1.5; padding: 6px 2px; }
+
+.dump-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.dump-item-info { flex: 1; min-width: 0; }
+
+.dump-item-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dump-item-name { line-height: 1.4; }
+
+.dump-today-btn {
+  background: var(--purple-bg);
+  border: 1px solid var(--purple-dim);
+  color: var(--purple);
+  border-radius: 8px;
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dump-today-btn:hover { background: var(--purple-dim); color: #fff; }
+
+.dump-del-btn {
+  background: none;
+  border: none;
+  color: var(--muted2);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.dump-del-btn:hover { color: var(--text); }
 
 /* -- Tasks panel -- */
 .tasks-panel {
@@ -270,10 +359,15 @@ select option { background: var(--surface2); }
 
 
 /* ============================================================
-   SECTION 2 — Heatmap, free-floating (no box wrapper)
+   ROW 2 — Heatmap, full width (cells grow to fill the row)
    ============================================================ */
 .heatmap-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
   margin-bottom: 20px;
+  min-width: 0;
 }
 
 .heatmap-grid-wrapper {
@@ -283,17 +377,19 @@ select option { background: var(--surface2); }
   padding-bottom: 6px;
 }
 
-.month-labels {
-  position: relative;
+/* Month labels share the heatmap's column template, so they
+   can never drift from their columns. */
+.month-labels-grid {
+  display: grid;
   margin-bottom: 6px;
 }
 
-.month-label {
+.month-label-cell {
   font-size: 10px;
   color: var(--muted);
   white-space: nowrap;
-  position: absolute;
-  top: 0;
+  overflow: visible;
+  line-height: 1.4;
 }
 
 .heatmap-grid {
@@ -310,10 +406,141 @@ select option { background: var(--surface2); }
   font-size: 12px;
 }
 
+/* -- Year dot meter (lives at the bottom of the right column) -- */
+.ym-meter {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ym-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ym-head strong { font-size: 14px; }
+
+.ym-pct { font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--purple); }
+.ym-sub { font-size: 11px; color: var(--muted); }
+
+
+/* ============================================================
+   ROW 3 — Full-width life grid
+   ============================================================ */
+.life-full {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.life-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.life-head strong { font-size: 14px; }
+
+.life-sub { font-size: 11px; color: var(--muted); margin-left: 8px; }
+
+/* Tiniest edit affordance — DOB rarely changes */
+.tiny-edit {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--muted2);
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.tiny-edit:hover { color: var(--text); border-color: var(--border); }
+
+.life-edit-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+
+.life-edit-row input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color-scheme: dark;
+}
+
+.life-edit-row .notes-save-btn { margin-top: 0; }
+
+/* -- Shared dot grids -- */
+.dot-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.dot-grid.dense { gap: 2px; }
+
+.dot-grid .dot {
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border2);
+}
+.dot-grid.sm .dot { width: 9px; height: 9px; }
+.dot-grid.md .dot { width: 12px; height: 12px; }
+.dot-grid.xs .dot { width: 6px; height: 6px; }
+.dot-grid .dot.fill { background: var(--purple-dim); border-color: var(--purple-dim); }
+.dot-grid.life-dots .dot.fill { background: #4ade80; border-color: #4ade80; }
+.dot-grid .dot.now {
+  background: var(--purple);
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px #a78bfa44;
+}
+.dot-grid.life-dots .dot.now { background: #4ade80; border-color: #4ade80; box-shadow: 0 0 0 3px #4ade8044; }
+
+/* -- Life band: column-first flow (columns complete top-to-bottom,
+   advance left-to-right), row count set from JS to match heatmap height -- */
+.life-grid {
+  display: grid;
+  grid-template-rows: repeat(var(--life-rows, 20), minmax(0, auto));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+.life-grid .dot {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border2);
+  min-width: 0;
+}
+
+.life-grid .dot.fill { background: #4ade80; border-color: #4ade80; }
+.life-grid .dot.now {
+  background: #4ade80;
+  border-color: #4ade80;
+  box-shadow: 0 0 0 2px #4ade8066;
+}
+
 
 /* ============================================================
    RESPONSIVE
    ============================================================ */
+@media (max-width: 1100px) {
+  .main-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .braindump-panel { grid-column: 1 / -1; }
+}
+
 @media (max-width: 960px) {
   .main-grid {
     grid-template-columns: 1fr;
@@ -321,6 +548,13 @@ select option { background: var(--surface2); }
 }
 
 @media (max-width: 640px) {
+  /* Narrow screens: classic 52-weeks-per-row rectangle instead of the band */
+  .life-grid {
+    grid-auto-flow: row;
+    grid-template-rows: none;
+    grid-template-columns: repeat(52, minmax(0, 1fr));
+  }
+
   .app-shell {
     padding: 0 12px 40px;
   }

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import { signInWithPopup, signOut, onAuthStateChanged,GoogleAuthProvider } from 'firebase/auth'
+import { signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth'
 import { auth, googleProvider } from './lib/firebase'
 import { useFirestore } from './hooks/useFirestore'
 import { useClock, todayKey, keyForDate, formatClock, formatDateLong } from './hooks/useClock'
 import SessionCard from './components/SessionCard'
 import SessionEditor from './components/SessionEditor'
+import BrainDump from './components/BrainDump'
 import Calendar from './components/Calendar'
+import { YearMeter, LifeMeter } from './components/TimeMeters'
 import { useToast, Toast } from './components/Toast'
 import { StatsPanel } from './components/Stats'
 import { QUOTES } from './lib/quotes'
@@ -23,7 +25,7 @@ export default function App() {
   const { msg, visible, showToast } = useToast()
   const userAvatar = user?.photoURL || 'https://www.google.com/favicon.ico'
 
-  const { sessions, dayData, loading, error: firestoreError, saveSessions, saveDaySessions, toggleSession, saveNote, resetDay } = useFirestore(user?.uid)
+  const { sessions, dayData, loading, error: firestoreError, saveSessions, saveDaySessions, toggleSession, saveNote, resetDay, brainDump, saveBrainDump, moveBrainDumpToDay, profile, saveProfile } = useFirestore(user?.uid)
 
   // Auth listener
   useEffect(() => {
@@ -92,6 +94,35 @@ export default function App() {
         console.error(err)
         showToast(err.code === 'permission-denied' ? 'Firestore rules are blocking reset' : 'Could not reset today')
       }
+    }
+  }
+
+  // ── Brain dump: inbox → today in one click ──
+  async function handleAddBrainDump(task) {
+    try {
+      await saveBrainDump([...(brainDump || []), task])
+    } catch (err) {
+      console.error(err)
+      showToast('Could not add to brain dump')
+    }
+  }
+
+  async function handleAddBrainDumpToToday(taskId) {
+    try {
+      await moveBrainDumpToDay(taskId, todayKey())
+      showToast('Added to today ✓')
+    } catch (err) {
+      console.error(err)
+      showToast('Could not add to today')
+    }
+  }
+
+  async function handleDeleteBrainDump(taskId) {
+    try {
+      await saveBrainDump((brainDump || []).filter(t => t.id !== taskId))
+    } catch (err) {
+      console.error(err)
+      showToast('Could not delete item')
     }
   }
 
@@ -220,7 +251,15 @@ async function handleGoogleSignIn(isRetry = false) {
           </div>
         </div>
 
+      {/* ROW 1 — brain dump + tasks + metrics/notes */}
       <div className="main-grid">
+          <BrainDump
+            items={brainDump}
+            onAdd={handleAddBrainDump}
+            onAddToToday={handleAddBrainDumpToToday}
+            onDelete={handleDeleteBrainDump}
+          />
+
           <div className="tasks-panel">
             <div className="task-header">
               <div style={{ fontSize: 13, color: 'var(--muted)' }}>Tasks</div>
@@ -255,14 +294,28 @@ async function handleGoogleSignIn(isRetry = false) {
       <button onClick={handleSaveNote} className="notes-save-btn">Save note</button>
     )}
   </div>
+
+  <YearMeter />
 </div>
         </div>
 
-        <div className="heatmap-section">
-          <Calendar sessions={sessions} dayData={dayData} viewDate={viewDate} onSelectDate={setViewDate} activeDays={activeDays} maxStreak={maxStreak} />
-        </div>
+        {/* ROW 2 — heatmap, full width (Calendar renders its own single card) */}
+        <Calendar sessions={sessions} dayData={dayData} viewDate={viewDate} onSelectDate={setViewDate} activeDays={activeDays} maxStreak={maxStreak} />
 
-       
+        {/* ROW 3 — full-width life grid */}
+        <LifeMeter
+          birthdate={profile?.birthdate}
+          onSaveBirthdate={async (birthdate) => {
+            try {
+              await saveProfile({ birthdate })
+              showToast('Birthdate saved')
+            } catch (err) {
+              console.error(err)
+              showToast('Could not save birthdate')
+            }
+          }}
+        />
+
       </div>
 
      {editorMode && (

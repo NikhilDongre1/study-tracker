@@ -4,16 +4,23 @@ import {
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { DEFAULT_SESSIONS } from '../lib/defaults'
-import { normalizeSessions } from '../lib/sessionUtils'
+import { normalizeSessions, parseTimeToMinutes } from '../lib/sessionUtils'
 
 function todayKey() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
 
+function minutesToHHMM(totalMins) {
+  const m = ((Math.round(totalMins) % 1440) + 1440) % 1440
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+}
+
 export function useFirestore(userId) {
   const [sessions, setSessions] = useState(normalizeSessions(DEFAULT_SESSIONS))
   const [dayData, setDayData] = useState({})   // { [dateKey]: { sessions: [], completed: {}, note: '' } }
+  const [brainDump, setBrainDump] = useState([])
+  const [profile, setProfile] = useState({})   // { birthdate: 'YYYY-MM-DD' }
   const [loading, setLoading] = useState(true)
   const [configLoaded, setConfigLoaded] = useState(false)
   const [daysLoaded, setDaysLoaded] = useState(false)
@@ -107,6 +114,30 @@ useEffect(() => {
     return unsub
   }, [userId])
 
+  // Global Brain Dump inbox (single list per user)
+  useEffect(() => {
+    if (!userId) return
+    const ref = doc(db, 'users', userId, 'config', 'braindump')
+    const unsub = onSnapshot(
+      ref,
+      snap => { if (snap.exists()) setBrainDump(normalizeSessions(snap.data().list || [])) },
+      err => { console.warn('braindump listener', err) }
+    )
+    return unsub
+  }, [userId])
+
+  // Profile (birthdate for life meter)
+  useEffect(() => {
+    if (!userId) return
+    const ref = doc(db, 'users', userId, 'config', 'profile')
+    const unsub = onSnapshot(
+      ref,
+      snap => { if (snap.exists()) setProfile(snap.data() || {}) },
+      err => { console.warn('profile listener', err) }
+    )
+    return unsub
+  }, [userId])
+
   useEffect(() => {
     if (!userId) return
     setLoading(!(configLoaded && daysLoaded))
@@ -153,5 +184,44 @@ const saveSessions = useCallback(async (newSessions) => {
     await setDoc(ref, { ...existing, completed: {}, note: '' })
   }, [userId, dayData])
 
-  return { sessions, dayData, loading, error, saveSessions, saveDaySessions, toggleSession, saveNote, resetDay }
+  const saveBrainDump = useCallback(async (list) => {
+    if (!userId) return
+    const ref = doc(db, 'users', userId, 'config', 'braindump')
+    await setDoc(ref, { list: normalizeSessions(list) })
+  }, [userId])
+
+  // One-click add: schedule a brain-dump task right after the day's last
+  // task (30 min block, time-sorted) + remove it from the inbox
+  const moveBrainDumpToDay = useCallback(async (taskId, dateKey) => {
+    if (!userId) return
+    const task = brainDump.find(t => t.id === taskId)
+    if (!task) return
+    const existing = dayData[dateKey] || { completed: {}, note: '', sessions }
+    const base = [...(existing.sessions?.length ? existing.sessions : sessions)]
+    const latestEnd = base.reduce(
+      (max, s) => Math.max(max, parseTimeToMinutes(s.timeEnd || s.timeStart || '09:00')),
+      parseTimeToMinutes('09:00')
+    )
+    const scheduled = {
+      ...task,
+      timeStart: minutesToHHMM(latestEnd),
+      timeEnd: minutesToHHMM(latestEnd + 30),
+    }
+    const daySessions = [...base, scheduled]
+      .sort((a, b) => parseTimeToMinutes(a.timeStart) - parseTimeToMinutes(b.timeStart))
+    const ref = doc(db, 'users', userId, 'days', dateKey)
+    await setDoc(ref, {
+      ...existing,
+      sessions: normalizeSessions(daySessions),
+    }, { merge: true })
+    await saveBrainDump(brainDump.filter(t => t.id !== taskId))
+  }, [userId, brainDump, dayData, sessions, saveBrainDump])
+
+  const saveProfile = useCallback(async (patch) => {
+    if (!userId) return
+    const ref = doc(db, 'users', userId, 'config', 'profile')
+    await setDoc(ref, { ...profile, ...patch }, { merge: true })
+  }, [userId, profile])
+
+  return { sessions, dayData, loading, error, saveSessions, saveDaySessions, toggleSession, saveNote, resetDay, brainDump, saveBrainDump, moveBrainDumpToDay, profile, saveProfile }
 }

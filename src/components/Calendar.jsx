@@ -6,7 +6,6 @@ const HEAT_COLORS = ['#26262c', '#224d24', '#2a7f34', '#35b55a', '#7ee8a0']
 const FUTURE_COLOR = '#1c1c20'
 
 const MIN_CELL = 10
-const MAX_CELL = 16
 const GAP_RATIO = 0.25 // gap as a fraction of cell size
 
 export default function Calendar({ sessions, dayData, viewDate, onSelectDate, activeDays, maxStreak }) {
@@ -17,10 +16,10 @@ export default function Calendar({ sessions, dayData, viewDate, onSelectDate, ac
     function recalc() {
       if (!wrapperRef.current) return
       const width = wrapperRef.current.offsetWidth
-      // 53 columns, each column = cell + gap, solve for cell size that fills width
+      // 53 columns, each column = cell + gap, solve for the cell size that
+      // fills the width exactly — no cap, so no trailing whitespace
       const raw = width / (53 + 53 * GAP_RATIO)
-      const clamped = Math.max(MIN_CELL, Math.min(MAX_CELL, raw))
-      setCellSize(clamped)
+      setCellSize(Math.max(MIN_CELL, raw))
     }
     recalc()
     window.addEventListener('resize', recalc)
@@ -55,20 +54,24 @@ export default function Calendar({ sessions, dayData, viewDate, onSelectDate, ac
     return cols
   }, [firstDisplayDay])
 
-  const monthLabels = useMemo(() => {
-    const labels = []
+  // Month label per week-column index ('' when the month didn't change).
+  // Rendered as a real grid sharing the heatmap's column template, so labels
+  // can never drift from their columns (fixes the old absolute-position bug).
+  const monthPerColumn = useMemo(() => {
+    const cells = Array(weeks.length).fill('')
     let lastMonth = -1
     weeks.forEach((week, index) => {
-      week.forEach(date => {
-        if (date < yearStart || date > yearEnd) return
+      for (const date of week) {
+        if (date < yearStart || date > yearEnd) continue
         const month = date.getMonth()
         if (month !== lastMonth) {
-          labels.push({ index, label: MONTH_NAMES[month] })
+          cells[index] = MONTH_NAMES[month]
           lastMonth = month
         }
-      })
+        break
+      }
     })
-    return labels
+    return cells
   }, [weeks, yearStart, yearEnd])
 
   function isWithinYear(date) {
@@ -87,18 +90,22 @@ function dayStats(key) {
   return { done, total: daySessions.length, intensity }
 }
 
+  const gridWidth = weeks.length * cellSize + (weeks.length - 1) * gap
+
   return (
     <div className="heatmap-section">
       <div className="heatmap-grid-wrapper" ref={wrapperRef}>
-        <div className="month-labels" style={{ width: weeks.length * colWidth, height: cellSize + 2 }}>
-          {monthLabels.map(label => (
-            <div
-              key={label.label + label.index}
-              className="month-label"
-              style={{ left: label.index * colWidth }}
-            >
-              {label.label}
-            </div>
+        <div
+          className="month-labels-grid"
+          style={{
+            gridTemplateColumns: `repeat(${weeks.length}, ${cellSize}px)`,
+            gap,
+            width: gridWidth,
+          }}
+          aria-hidden
+        >
+          {monthPerColumn.map((label, i) => (
+            <div key={i} className="month-label-cell">{label}</div>
           ))}
         </div>
 
@@ -107,7 +114,7 @@ function dayStats(key) {
           style={{
             gridTemplateColumns: `repeat(${weeks.length}, ${cellSize}px)`,
             gap,
-            width: weeks.length * colWidth,
+            width: gridWidth,
           }}
         >
           {weeks.map((week, weekIndex) => (
