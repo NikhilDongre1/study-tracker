@@ -6,6 +6,7 @@ import { useClock, todayKey, keyForDate, formatClock, formatDateLong } from './h
 import SessionCard from './components/SessionCard'
 import SessionEditor from './components/SessionEditor'
 import BrainDump from './components/BrainDump'
+import ExamCountdown from './components/ExamCountdown'
 import Calendar from './components/Calendar'
 import { YearMeter, LifeMeter } from './components/TimeMeters'
 import { useToast, Toast } from './components/Toast'
@@ -25,7 +26,7 @@ export default function App() {
   const { msg, visible, showToast } = useToast()
   const userAvatar = user?.photoURL || 'https://www.google.com/favicon.ico'
 
-  const { sessions, dayData, loading, error: firestoreError, saveSessions, saveDaySessions, toggleSession, saveNote, resetDay, brainDump, saveBrainDump, moveBrainDumpToDay, profile, saveProfile } = useFirestore(user?.uid)
+  const { sessions, dayData, loading, error: firestoreError, saveSessions, saveDaySessions, toggleSession, saveNote, resetDay, brainDump, saveBrainDump, moveBrainDumpToDay, exams, saveExams, profile, saveProfile } = useFirestore(user?.uid)
 
   // Auth listener
   useEffect(() => {
@@ -100,7 +101,8 @@ export default function App() {
   // ── Brain dump: inbox → today in one click ──
   async function handleAddBrainDump(task) {
     try {
-      await saveBrainDump([...(brainDump || []), task])
+      // Keep the most recently captured idea at the top of the inbox.
+      await saveBrainDump([task, ...(brainDump || [])])
     } catch (err) {
       console.error(err)
       showToast('Could not add to brain dump')
@@ -123,6 +125,15 @@ export default function App() {
     } catch (err) {
       console.error(err)
       showToast('Could not delete item')
+    }
+  }
+
+  async function handleSaveExams(nextExams) {
+    try {
+      await saveExams(nextExams)
+    } catch (err) {
+      console.error(err)
+      showToast('Could not save exam')
     }
   }
 
@@ -253,12 +264,15 @@ async function handleGoogleSignIn(isRetry = false) {
 
       {/* ROW 1 — brain dump + tasks + metrics/notes */}
       <div className="main-grid">
-          <BrainDump
-            items={brainDump}
-            onAdd={handleAddBrainDump}
-            onAddToToday={handleAddBrainDumpToToday}
-            onDelete={handleDeleteBrainDump}
-          />
+          <div className="inbox-column">
+            <BrainDump
+              items={brainDump}
+              onAdd={handleAddBrainDump}
+              onAddToToday={handleAddBrainDumpToToday}
+              onDelete={handleDeleteBrainDump}
+            />
+            <ExamCountdown exams={exams} onSave={handleSaveExams} />
+          </div>
 
           <div className="tasks-panel">
             <div className="task-header">

@@ -20,6 +20,7 @@ export function useFirestore(userId) {
   const [sessions, setSessions] = useState(normalizeSessions(DEFAULT_SESSIONS))
   const [dayData, setDayData] = useState({})   // { [dateKey]: { sessions: [], completed: {}, note: '' } }
   const [brainDump, setBrainDump] = useState([])
+  const [exams, setExams] = useState([])
   const [profile, setProfile] = useState({})   // { birthdate: 'YYYY-MM-DD' }
   const [loading, setLoading] = useState(true)
   const [configLoaded, setConfigLoaded] = useState(false)
@@ -51,6 +52,18 @@ export function useFirestore(userId) {
         setError(err)
         setConfigLoaded(true)
       }
+    )
+    return unsub
+  }, [userId])
+
+  // Exam countdowns are shared across all dates for a user.
+  useEffect(() => {
+    if (!userId) return
+    const ref = doc(db, 'users', userId, 'config', 'exams')
+    const unsub = onSnapshot(
+      ref,
+      snap => { setExams(snap.exists() ? snap.data().list || [] : []) },
+      err => { console.warn('exam listener', err) }
     )
     return unsub
   }, [userId])
@@ -190,6 +203,12 @@ const saveSessions = useCallback(async (newSessions) => {
     await setDoc(ref, { list: normalizeSessions(list) })
   }, [userId])
 
+  const saveExams = useCallback(async (list) => {
+    if (!userId) return
+    const ref = doc(db, 'users', userId, 'config', 'exams')
+    await setDoc(ref, { list })
+  }, [userId])
+
   // One-click add: schedule a brain-dump task right after the day's last
   // task (30 min block, time-sorted) + remove it from the inbox
   const moveBrainDumpToDay = useCallback(async (taskId, dateKey) => {
@@ -223,5 +242,5 @@ const saveSessions = useCallback(async (newSessions) => {
     await setDoc(ref, { ...profile, ...patch }, { merge: true })
   }, [userId, profile])
 
-  return { sessions, dayData, loading, error, saveSessions, saveDaySessions, toggleSession, saveNote, resetDay, brainDump, saveBrainDump, moveBrainDumpToDay, profile, saveProfile }
+  return { sessions, dayData, loading, error, saveSessions, saveDaySessions, toggleSession, saveNote, resetDay, brainDump, saveBrainDump, moveBrainDumpToDay, exams, saveExams, profile, saveProfile }
 }
