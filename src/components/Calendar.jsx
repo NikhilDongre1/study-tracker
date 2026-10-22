@@ -133,7 +133,7 @@ function dayStats(key) {
   return (
     <div
       key={key}
-      onClick={() => active && day <= today && onSelectDate(key)}
+      onClick={() => active && onSelectDate(key)}
       title={active ? `${day.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}: ${total === 0 ? 'no sessions planned' : `${done}/${total} sessions completed`}` : ''}
       style={{
         width: cellSize,
@@ -141,8 +141,8 @@ function dayStats(key) {
         borderRadius: 3,
         background: bg,
         border: isSelected ? '2px solid var(--purple)' : '1px solid transparent',
-        cursor: active && day <= today ? 'pointer' : 'default',
-        opacity: day > today ? 0.35 : 1,
+        cursor: active ? 'pointer' : 'default',
+        opacity: day > today ? 0.6 : 1,
         transition: 'transform 0.15s ease, background-color 0.15s ease',
       }}
     />

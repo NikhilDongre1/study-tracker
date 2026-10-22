@@ -56,13 +56,10 @@ export default function App() {
   function changeDay(dir) {
     const d = new Date(viewDate + 'T00:00:00')
     d.setDate(d.getDate() + dir)
-    const nextKey = keyForDate(d)
-    if (nextKey > todayKey()) { showToast('Cannot go to future dates'); return }
-    setViewDate(nextKey)
+    setViewDate(keyForDate(d))
   }
 
   async function handleToggle(sessionId) {
-    if (viewDate !== todayKey()) { showToast('You can only edit today\'s sessions'); return }
     try {
       await toggleSession(viewDate, sessionId)
     const data = dayData[viewDate] || {}
@@ -86,11 +83,10 @@ export default function App() {
   }
 
   async function handleReset() {
-    if (viewDate !== todayKey()) { showToast('Can only reset today'); return }
-    if (window.confirm('Reset all sessions for today?')) {
+    if (window.confirm('Reset all sessions for this day?')) {
       try {
         await resetDay(viewDate)
-        showToast('Today reset')
+        showToast('Day reset')
       } catch (err) {
         console.error(err)
         showToast(err.code === 'permission-denied' ? 'Firestore rules are blocking reset' : 'Could not reset today')
@@ -335,7 +331,7 @@ async function handleGoogleSignIn(isRetry = false) {
      {editorMode && (
   <SessionEditor
     sessions={currentSessions}
-    title="Edit today's plan"
+    title={`Edit plan — ${formatDateLong(viewDate)}`}
     saveLabel="Save"
     showDefaultOption={true}
     onSave={async (newSessions, setAsDefault) => {
@@ -345,7 +341,7 @@ async function handleGoogleSignIn(isRetry = false) {
           await saveSessions(newSessions)
           showToast('Saved and set as default for upcoming days')
         } else {
-          showToast('Today\'s plan saved')
+          showToast('Plan saved')
         }
       } catch (err) {
         console.error(err)
